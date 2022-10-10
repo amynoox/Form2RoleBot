@@ -23,6 +23,9 @@ namespace DiscordBot
 
         public async Task StartAsync(string[] args)
         {
+
+            System.Console.OutputEncoding = System.Text.Encoding.UTF8;
+
             Console.WriteLine("---------------------------------------------------------------------");
             Console.WriteLine("Form2Role Bot v" + Version);
             Console.WriteLine("v0.0.0 -> current created by Talios0");
@@ -44,7 +47,7 @@ namespace DiscordBot
             _client = new DiscordSocketClient(new DiscordSocketConfig
             {
                 LogLevel = logS,
-                GatewayIntents = GatewayIntents.GuildMembers | GatewayIntents.Guilds
+                GatewayIntents = GatewayIntents.GuildMembers | GatewayIntents.Guilds,
             });
 
             _client.Log += Log;
@@ -58,9 +61,11 @@ namespace DiscordBot
             Console.WriteLine("\n");
             await Sheets.UpdateRoles(_client); // forces update initially on all servers
 
+            
             while (true)
             {
                 await Task.Delay(Config.Bot.UpdateDelay * 60000); // delay in minutes
+                Console.WriteLine("!!!!Recheck!!!!!");
                 await Sheets.CheckSheets(_client);
             }
         }

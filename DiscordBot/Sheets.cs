@@ -1,4 +1,6 @@
-﻿using Discord.WebSocket;
+﻿using Discord;
+using Discord.WebSocket;
+using Google.Apis.Json;
 using Google.Apis.Services;
 using Google.Apis.Sheets.v4;
 using Google.Apis.Sheets.v4.Data;
@@ -6,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
@@ -28,7 +31,7 @@ namespace DiscordBot
             _service = new SheetsService(new BaseClientService.Initializer()
             {
                 ApiKey = Config.GoogleData.APIKey,
-                ApplicationName = "Form2Role Bot"
+                ApplicationName = "Form2Role Bot",
             });
 
             SpreadsheetsResource.ValuesResource.GetRequest request = _service.Spreadsheets.Values.Get(SheetId, Range);
@@ -36,7 +39,8 @@ namespace DiscordBot
             start = Regex.Replace(start, @"[\d-]", string.Empty);
             string end = Range.Split(':')[1];
             end = Regex.Replace(end, @"[\d-]", string.Empty);
-            SpreadsheetsResource.ValuesResource.GetRequest columns = _service.Spreadsheets.Values.Get(SheetId, start+"1:"+end+"1");
+
+            SpreadsheetsResource.ValuesResource.GetRequest columns = _service.Spreadsheets.Values.Get(SheetId, start + "1:" + end + "1");
 
 
             ValueRange responses = request.Execute();
@@ -63,64 +67,76 @@ namespace DiscordBot
                     foreach (SocketGuildUser u in allUsers)
                     {
                         bool change = false;
+                        List<SocketRole> formattedRoles = new List<SocketRole>();
+
                         // Checking roles for user
                         foreach (IList<object> row in values)
                         {
                             if (!SheetsFunctionality.FindUsername(u, row)) continue;
-
-                            //await SheetsFunctionality.StoreUserID(u);
-                            if (Config.GoogleData.NicknameOnly)
-                            {
-                                Console.WriteLine("Updating Nickname for " + u.Username + "#" + u.Discriminator);
-                                change = await SheetsFunctionality.FindAndSetNickname(u, row);
-                                break;
-                            }
-
-                            Console.WriteLine("Updating Roles for " + u.Username + "#" + u.Discriminator);
                             List<string> allUserRoles = new List<string>(); // All of the rolls that need to be assigned to the user
 
                             // Gets all roles that need to be assigned to the user in addition to removing those that interfere with roleGroups.json
                             allUserRoles = await SheetsFunctionality.GetRoles(row, u);
-                            if(Config.Bot.AutoRole != "") allUserRoles.Add(Config.Bot.AutoRole);
 
-                            List<SocketRole> formattedRoles = new List<SocketRole>();
+                            /*
+                            if (u.Username.Equals("ᕲᑘ'ᓰSᒪᓰᘉᘜᖇ", StringComparison.InvariantCultureIgnoreCase)) {
+                                foreach (var item in allUserRoles)
+                                {
+                                    Console.WriteLine("debug => " + item);
+                                }
+                                return;
+                            }*/
 
                             bool redo = false;
                             // Google Sheets data to SocketRole
                             foreach (string s in allUserRoles)
                             {
-                                SocketRole role = g.Roles.FirstOrDefault(x => x.Name == s);
+                                SocketRole role = g.Roles.FirstOrDefault(x => x.Name.Equals(s, StringComparison.InvariantCultureIgnoreCase));
+
                                 if (role == default(SocketRole))
                                 {
-                                    role = await SheetsFunctionality.CreateRole(g, s);
-                                    redo = true;
-                                    change = true;
+                                    Console.WriteLine("Role not exist!!!! ==>" + s + " For=>" + u.Username + "#" + u.Discriminator);
+                                    return;
                                 }
+
                                 // Don't add the role if the user already has it.
                                 if (u.Roles.Contains(role)) {
                                     continue;
                                 }
-                                change = true;
-                                formattedRoles.Add(role); // Adds role to list of queued roles
+                                if (!formattedRoles.Contains(role)) {
+                                    change = true;
+                                    formattedRoles.Add(role); // Adds role to list of queued roles
+                                }
+                            }
+                        }
+
+
+                        if (formattedRoles.Count > 0)
+                        {
+                            string mydebugRoles = "";
+
+
+                            foreach (var item in formattedRoles.ToArray())
+                            {
+                                mydebugRoles += ";" + item.Name;
                             }
 
-                            // Add user to list of roles to redo
-                            if (redo) redoUsers.Add(u, row);
-
+                            Console.WriteLine("Updating Roles for " + u.Username + "#" + u.Discriminator + ":" + mydebugRoles);
                             // Add Roles To User
                             await SheetsFunctionality.AddRolesToUser(u, formattedRoles.ToArray());
 
                             // Find and set nickname
-                            await SheetsFunctionality.FindAndSetNickname(u, row);
+                            //await SheetsFunctionality.FindAndSetNickname(u, row);
                         }
 
+                        /*
                         // Secondary Role Assigner for roles that were just created
-                        await AssignNewRoles(g, redoUsers);
-
+                        await AssignNewRoles(g, redoUsers);*/
+                        /*
                         if (change)
                         {
                             await DiscordSpecificHandler.VerifyUser(g, u);
-                        }
+                        }*/
                     }
                 }
 

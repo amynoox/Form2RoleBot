@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace DiscordBot
@@ -11,23 +12,37 @@ namespace DiscordBot
         public static bool FindUsername(SocketGuildUser user, IList<object> userCell) // Checks if the username from the Google Sheets matches a discord user
         {
             string username = "NaN";
-            string discordUsername = user.Username.ToLower();
+            string discordUsername = user.Username.ToLowerInvariant();
+            string discordUsername_FULL = discordUsername + "#" + user.Discriminator;
+
+
+
+
+            username = userCell[0].ToString();
+            username = username.Trim().ToLowerInvariant();
+
+            bool res = discordUsername_FULL.Equals(username, StringComparison.InvariantCultureIgnoreCase);
+            return res;
+
+            /*
+            Console.WriteLine("Comparing =>" + username + " With (DISCORD)=> " + discordUsername_FULL);
+
             if (Config.GoogleData.DiscordIDField != -1)
             {
                 username = userCell[Config.GoogleData.DiscordIDField].ToString();
-                username = username.Trim().ToLower(); // trims excess characters
+                username = username.Trim().ToLowerInvariant(); // trims excess characters
 
                 if (username != discordUsername + "#" + user.Discriminator && username != user.Discriminator) return false;
             }
             else
             {
                 username = userCell[0].ToString();
-                username = username.Trim().ToLower();
+                username = username.Trim().ToLowerInvariant();
                 
                 if (username != discordUsername + "#" + user.Discriminator && username != user.Discriminator) return false;
             }
 
-            return true;
+            return true;*/
         }
 
 
@@ -103,12 +118,20 @@ namespace DiscordBot
             for (int i = Config.GoogleData.RolesStartAfter; i < userRow.Count - Config.GoogleData.RolesEndBefore; i++)
             {
                 string roleName = userRow[i].ToString().Trim();
+
+                if (roleName.Equals("None") || roleName.Equals(""))
+                {
+                    columnNumber++;
+                    continue;
+                }
+
+                /*
                 // Goto the next cell if there's no role
                 if (roleName.Equals("None") || roleName.Equals("")) {
                     await RoleGroupFunctionality.RemovePreviousRole(user, assignedRoleNames, columnNumber);
                     columnNumber++;
                     continue;
-                }
+                }*/
 
                 //Seperates roles into an array
                 string[] seperatedRoles = SeperateRoles(roleName);
@@ -119,8 +142,13 @@ namespace DiscordBot
                 allUserRoles.AddRange(seperatedRoles);
                 columnNumber++;
             }
-
             return allUserRoles;
+        }
+
+        public static string toUTF8(string myString) {
+            byte[] bytes = Encoding.Default.GetBytes(myString);
+            myString = Encoding.UTF8.GetString(bytes);
+            return myString;
         }
 
 
